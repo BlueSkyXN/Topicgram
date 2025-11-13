@@ -4,6 +4,7 @@ import (
 	. "Topicgram/database"
 	"Topicgram/i18n"
 	"Topicgram/model"
+	"Topicgram/pkg/adfilter"
 	"Topicgram/utils"
 	"errors"
 	"fmt"
@@ -105,7 +106,23 @@ func Init(botConfig *model.BotConfig) error {
 		close(mediaGroup.done)
 	})
 
-	bot = &Bot{BotConfig: botConfig, BotAPI: &BotAPI{BotAPI: b, mediaGroups: mediaGroups}}
+	// Initialize ad filter
+	var filter *adfilter.Filter
+	if botConfig.AdFilter != nil {
+		filter, err = adfilter.NewFilter(botConfig.AdFilter)
+		if err != nil {
+			clog.Warnf("[Bot] Failed to initialize ad filter: %s", err)
+			filter = nil
+		} else if filter.IsEnabled() {
+			clog.Info("[Bot] Ad filter enabled")
+		}
+	}
+
+	bot = &Bot{
+		BotConfig: botConfig,
+		BotAPI:    &BotAPI{BotAPI: b, mediaGroups: mediaGroups},
+		adFilter:  filter,
+	}
 	clog.Success("[Bot] Load completed")
 	return nil
 }
@@ -131,6 +148,7 @@ func HookHandler(c *gin.Context) {
 type Bot struct {
 	*model.BotConfig
 	*BotAPI
+	adFilter *adfilter.Filter
 }
 
 func (bot *Bot) handleUpdate(update *botapi.Update) {
@@ -280,6 +298,24 @@ func generateMediaGroup(msgs []*botapi.Message, baseChat botapi.BaseChat) (botap
 	}, nil
 }
 
+// checkMessageForAds checks if a message should be blocked based on ad filter rules
+// Returns true if the message is spam/ad and should be blocked
+func (bot *Bot) checkMessageForAds(msg *botapi.Message) bool {
+	if bot.adFilter == nil || !bot.adFilter.IsEnabled() {
+		return false
+	}
+
+	text := msg.Text
+	caption := msg.Caption
+
+	isSpam := bot.adFilter.CheckMessage(text, caption)
+	if isSpam {
+		clog.Infof("[AdFilter] Blocked message from user %d: text=%q caption=%q", msg.From.ID, text, caption)
+	}
+
+	return isSpam
+}
+
 func (bot *Bot) handleUserNewMessage(update *botapi.Update) {
 	msg := update.Message
 	translator := i18n.GetOrDefault(msg.From.LanguageCode)
@@ -384,6 +420,24 @@ func (bot *Bot) handleUserNewMessage(update *botapi.Update) {
 				Entities: entities,
 			})
 		}
+		return
+	}
+
+	// Check for spam/ads using ad filter
+	if bot.checkMessageForAds(msg) {
+		// Delete the spam message from user chat
+		bot.Request(botapi.DeleteMessageConfig{
+			BaseChatMessage: botapi.BaseChatMessage{
+				ChatConfig: currentChatConfig,
+				MessageID:  msg.MessageID,
+			},
+		})
+		// Optionally notify user
+		text := "Your message was blocked by spam filter. Please contact an administrator if you believe this is an error."
+		bot.Send(botapi.MessageConfig{
+			BaseChat: currentChat,
+			Text:     text,
+		})
 		return
 	}
 
@@ -1750,6 +1804,21 @@ func (bot *Bot) handleTopicNewMessage(update *botapi.Update) {
 				return
 			}
 		}
+	}
+
+	// Check for spam/ads using ad filter (skip for admin commands)
+	if !strings.HasPrefix(msg.Text, "/") && bot.checkMessageForAds(msg) {
+		// Delete the spam message from group
+		bot.Request(botapi.DeleteMessageConfig{
+			BaseChatMessage: currentMessage,
+		})
+		// Notify in group
+		text := "Message blocked by spam filter"
+		bot.Send(botapi.MessageConfig{
+			BaseChat: currentChat,
+			Text:     text,
+		})
+		return
 	}
 
 	if msg.HasProtectedContent {

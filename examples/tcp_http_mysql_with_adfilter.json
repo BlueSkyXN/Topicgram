@@ -1,0 +1,53 @@
+{
+    "Web": {
+        "Type": "tcp",
+        "Listen": ":80"
+    },
+    "Database": {
+        "Type": "mysql",
+        "MySQL": {
+            "Host": "localhost",
+            "Port": 3306,
+            "User": "topicgram",
+            "Password": "password",
+            "Name": "topicgram"
+        }
+    },
+    "Bot": {
+        "Token": "",
+        "GroupId": 0,
+        "LanguageCode": "zh-hans",
+        "WebHook": {
+            "Host": ""
+        },
+        "AdFilter": {
+            "enabled": true,
+            "keywords": [
+                "免费领取",
+                "点击领取",
+                "限时优惠",
+                "立即购买",
+                "加微信",
+                "添加微信",
+                "扫码添加",
+                "代理加盟",
+                "兼职",
+                "刷单",
+                "投资理财",
+                "贷款"
+            ],
+            "patterns": [
+                "a{6,}",
+                "\\d{10,}"
+            ],
+            "url_patterns": [
+                "(?i)(https?://|www\\.|t\\.me/)[^\\s]+"
+            ],
+            "max_url_count": 3
+        }
+    },
+    "Security": {
+        "InsecureSkipVerify": false
+    },
+    "Proxy": ""
+}
