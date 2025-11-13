@@ -9,6 +9,7 @@ The Ad Filter is a text recognition-based message interception system that autom
 ## 功能特性 / Features
 
 - **关键词匹配** / Keyword Matching: 支持配置关键词黑名单，自动拦截包含这些关键词的消息
+- **通配符关键词** / Wildcard Keywords: 支持使用 `*` 和 `?` 通配符创建灵活的匹配规则 ([详细文档](WildcardFiltering.md))
 - **正则表达式** / Regular Expressions: 支持使用正则表达式定义复杂的过滤规则
 - **URL 限制** / URL Limits: 可以限制消息中的链接数量，防止广告链接泛滥
 - **实时日志** / Real-time Logging: 记录所有被拦截的消息，方便审计和调整规则
@@ -38,6 +39,12 @@ Add the `AdFilter` field to the `Bot` configuration in `config.json`:
                 "加微信",
                 "添加微信"
             ],
+            "wildcard_keywords": [
+                "*微信*",
+                "*vx*",
+                "加*好友",
+                "*免费*"
+            ],
             "patterns": [
                 "a{6,}",
                 "\\d{10,}"
@@ -54,7 +61,8 @@ Add the `AdFilter` field to the `Bot` configuration in `config.json`:
 ### 配置项说明 / Configuration Options
 
 - `enabled` (bool): 是否启用广告过滤器 / Whether to enable the ad filter
-- `keywords` (array): 关键词黑名单列表 / List of blocked keywords
+- `keywords` (array): 关键词黑名单列表（精确匹配）/ List of blocked keywords (exact match)
+- `wildcard_keywords` (array): 通配符关键词列表（支持 * 和 ?）/ List of wildcard keywords (supports * and ?) - [详细说明](WildcardFiltering.md)
 - `patterns` (array): 正则表达式规则列表 / List of regex patterns
 - `url_patterns` (array): URL 匹配规则 / URL matching patterns
 - `max_url_count` (int): 允许的最大链接数量 / Maximum allowed URL count

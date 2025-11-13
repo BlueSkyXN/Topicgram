@@ -1,36 +1,40 @@
 package adfilter
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 )
 
 // Filter represents an ad/spam filter
 type Filter struct {
-	enabled       bool
-	keywords      []string
-	patterns      []*regexp.Regexp
-	urlPatterns   []*regexp.Regexp
-	maxURLCount   int
+	enabled          bool
+	keywords         []string
+	wildcardKeywords []string
+	patterns         []*regexp.Regexp
+	urlPatterns      []*regexp.Regexp
+	maxURLCount      int
 }
 
 // Config holds the configuration for the ad filter
 type Config struct {
-	Enabled     bool     `json:"enabled"`
-	Keywords    []string `json:"keywords"`
-	Patterns    []string `json:"patterns"`
-	URLPatterns []string `json:"url_patterns"`
-	MaxURLCount int      `json:"max_url_count"`
+	Enabled          bool     `json:"enabled"`
+	Keywords         []string `json:"keywords"`
+	WildcardKeywords []string `json:"wildcard_keywords"`
+	Patterns         []string `json:"patterns"`
+	URLPatterns      []string `json:"url_patterns"`
+	MaxURLCount      int      `json:"max_url_count"`
 }
 
 // NewFilter creates a new ad filter with the given configuration
 func NewFilter(config *Config) (*Filter, error) {
 	if config == nil {
 		return &Filter{
-			enabled:     false,
-			keywords:    []string{},
-			patterns:    []*regexp.Regexp{},
-			urlPatterns: []*regexp.Regexp{},
+			enabled:          false,
+			keywords:         []string{},
+			wildcardKeywords: []string{},
+			patterns:         []*regexp.Regexp{},
+			urlPatterns:      []*regexp.Regexp{},
 		}, nil
 	}
 
@@ -39,12 +43,18 @@ func NewFilter(config *Config) (*Filter, error) {
 		keywords = []string{}
 	}
 
+	wildcardKeywords := config.WildcardKeywords
+	if wildcardKeywords == nil {
+		wildcardKeywords = []string{}
+	}
+
 	filter := &Filter{
-		enabled:     config.Enabled,
-		keywords:    keywords,
-		maxURLCount: config.MaxURLCount,
-		patterns:    []*regexp.Regexp{},
-		urlPatterns: []*regexp.Regexp{},
+		enabled:          config.Enabled,
+		keywords:         keywords,
+		wildcardKeywords: wildcardKeywords,
+		maxURLCount:      config.MaxURLCount,
+		patterns:         []*regexp.Regexp{},
+		urlPatterns:      []*regexp.Regexp{},
 	}
 
 	// Compile regex patterns
@@ -84,6 +94,33 @@ func (f *Filter) IsEnabled() bool {
 	return f.enabled
 }
 
+// matchWildcard checks if a text matches a wildcard pattern
+// Supports * (match any sequence) and ? (match single character)
+// Case-insensitive matching
+func matchWildcard(pattern, text string) bool {
+	// Convert both to lowercase for case-insensitive matching
+	pattern = strings.ToLower(pattern)
+	text = strings.ToLower(text)
+
+	// Try matching at every position in the text for substring matching
+	// This allows patterns like "*test*" to match anywhere in the text
+	for i := 0; i <= len(text); i++ {
+		for j := i; j <= len(text); j++ {
+			substring := text[i:j]
+			if matched, _ := filepath.Match(pattern, substring); matched {
+				return true
+			}
+		}
+	}
+	
+	// Also check if the pattern matches the entire text
+	if matched, err := filepath.Match(pattern, text); err == nil && matched {
+		return true
+	}
+
+	return false
+}
+
 // CheckMessage checks if a message should be blocked
 // Returns true if the message is spam/ad, false otherwise
 func (f *Filter) CheckMessage(text string, caption string) bool {
@@ -108,9 +145,16 @@ func (f *Filter) CheckMessage(text string, caption string) bool {
 	// Convert to lowercase for case-insensitive matching
 	lowerContent := strings.ToLower(content)
 
-	// Check for blocked keywords
+	// Check for exact keyword matches
 	for _, keyword := range f.keywords {
 		if strings.Contains(lowerContent, strings.ToLower(keyword)) {
+			return true
+		}
+	}
+
+	// Check for wildcard keyword matches
+	for _, wildcardKeyword := range f.wildcardKeywords {
+		if matchWildcard(wildcardKeyword, content) {
 			return true
 		}
 	}
@@ -141,7 +185,7 @@ func GetDefaultConfig() *Config {
 	return &Config{
 		Enabled: false, // Disabled by default
 		Keywords: []string{
-			// Common spam keywords (can be customized)
+			// Common spam keywords (exact match, can be customized)
 			"免费领取",
 			"点击领取",
 			"限时优惠",
@@ -154,6 +198,16 @@ func GetDefaultConfig() *Config {
 			"刷单",
 			"投资理财",
 			"贷款",
+		},
+		WildcardKeywords: []string{
+			// Wildcard patterns using * and ?
+			"*微信*",      // Matches any text containing "微信"
+			"*vx*",       // Matches any text containing "vx" (common WeChat abbreviation)
+			"加*好友",     // Matches "加" followed by anything and then "好友"
+			"*免费*",      // Matches any text containing "免费"
+			"*优惠*码",    // Matches text with "优惠" followed by anything and ending with "码"
+			"代理*",      // Matches "代理" followed by anything
+			"*赚钱*",     // Matches any text containing "赚钱"
 		},
 		Patterns: []string{
 			// Pattern for many repeated 'a' characters (as example)

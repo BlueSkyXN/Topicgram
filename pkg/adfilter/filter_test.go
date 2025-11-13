@@ -175,3 +175,198 @@ func TestGetDefaultConfig(t *testing.T) {
 		t.Error("Default config should have MaxURLCount set")
 	}
 }
+
+func TestCheckMessage_WildcardKeywords(t *testing.T) {
+	config := &Config{
+		Enabled: true,
+		WildcardKeywords: []string{
+			"*微信*",
+			"加*好友",
+			"*免费*",
+			"vx*",
+		},
+	}
+
+	filter, err := NewFilter(config)
+	if err != nil {
+		t.Fatalf("Failed to create filter: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		text     string
+		expected bool
+	}{
+		// Test * wildcard - matches any sequence
+		{"Match *微信*", "请加我的微信", true},
+		{"Match *微信* at start", "微信号12345", true},
+		{"Match *微信* at end", "联系微信", true},
+		{"No match 微信", "请联系我", false},
+
+		// Test prefix and suffix wildcards
+		{"Match 加*好友", "加我好友", true},
+		{"Match 加*好友 with text", "加个好友吧", true},
+		{"No match 加*好友", "好友申请", false},
+
+		// Test *免费* pattern
+		{"Match *免费*", "这是免费的活动", true},
+		{"Match *免费* standalone", "免费", true},
+
+		// Test vx* pattern
+		{"Match vx* at start", "vx123456", true},
+		{"Match vx* in text", "my vxid", true},
+
+		// Empty text
+		{"Empty text", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filter.CheckMessage(tt.text, "")
+			if result != tt.expected {
+				t.Errorf("CheckMessage(%q) = %v, want %v", tt.text, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCheckMessage_WildcardWithQuestionMark(t *testing.T) {
+	config := &Config{
+		Enabled: true,
+		WildcardKeywords: []string{
+			"v?",     // Matches v followed by any single character
+			"微信?",   // Matches 微信 followed by any single character
+		},
+	}
+
+	filter, err := NewFilter(config)
+	if err != nil {
+		t.Fatalf("Failed to create filter: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		text     string
+		expected bool
+	}{
+		{"Match v?", "vx号码", true},
+		{"Match v? with v+char", "vx", true},
+		{"No match v? - just v", "v", false},
+		{"Match 微信?", "微信号", true},
+		{"Match 微信? with char", "微信啊", true},
+		{"No match 微信? - just 微信", "微信", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filter.CheckMessage(tt.text, "")
+			if result != tt.expected {
+				t.Errorf("CheckMessage(%q) = %v, want %v", tt.text, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCheckMessage_MixedKeywordsAndWildcards(t *testing.T) {
+	config := &Config{
+		Enabled:          true,
+		Keywords:         []string{"spam", "广告"},
+		WildcardKeywords: []string{"*微信*", "免费*"},
+	}
+
+	filter, err := NewFilter(config)
+	if err != nil {
+		t.Fatalf("Failed to create filter: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		text     string
+		expected bool
+	}{
+		{"Match exact keyword", "This is spam", true},
+		{"Match wildcard", "加我微信", true},
+		{"Match both", "spam 加微信", true},
+		{"Match 免费*", "免费领取", true},
+		{"No match", "Hello world", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filter.CheckMessage(tt.text, "")
+			if result != tt.expected {
+				t.Errorf("CheckMessage(%q) = %v, want %v", tt.text, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCheckMessage_WildcardCaseInsensitive(t *testing.T) {
+	config := &Config{
+		Enabled:          true,
+		WildcardKeywords: []string{"*WeChat*", "VX*"},
+	}
+
+	filter, err := NewFilter(config)
+	if err != nil {
+		t.Fatalf("Failed to create filter: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		text     string
+		expected bool
+	}{
+		{"Match uppercase", "Add me on WECHAT", true},
+		{"Match lowercase", "add me on wechat", true},
+		{"Match mixed case", "Add me on WeChat", true},
+		{"Match VX uppercase", "VX12345", true},
+		{"Match vx lowercase", "vx12345", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filter.CheckMessage(tt.text, "")
+			if result != tt.expected {
+				t.Errorf("CheckMessage(%q) = %v, want %v", tt.text, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchWildcard(t *testing.T) {
+	tests := []struct {
+		pattern  string
+		text     string
+		expected bool
+	}{
+		// Basic * wildcard tests
+		{"*test*", "this is a test message", true},
+		{"*test*", "test", true},
+		{"*test*", "testing", true},
+		{"test*", "test123", true},
+		{"*test", "mytest", true},
+		
+		// Basic ? wildcard tests
+		{"t?st", "test", true},
+		{"t?st", "tast", true},
+		{"t?st", "t st", true},
+		{"t?st", "tst", false},
+		
+		// No match cases
+		{"*xyz*", "abc def", false},
+		
+		// Empty cases
+		{"", "", true},
+		{"*", "anything", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.pattern+"_"+tt.text, func(t *testing.T) {
+			result := matchWildcard(tt.pattern, tt.text)
+			if result != tt.expected {
+				t.Errorf("matchWildcard(%q, %q) = %v, want %v", tt.pattern, tt.text, result, tt.expected)
+			}
+		})
+	}
+}
