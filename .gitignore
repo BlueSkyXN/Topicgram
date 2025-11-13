@@ -9,3 +9,4 @@ dist/
 .go/
 .docker/i18n/i18n.go
 i18n/languages/languages.go
+Topicgram
