@@ -107,8 +107,6 @@ gitlab.com/CoiaPrant/gorm-oracle v0.0.0-20251002083709-fd53b886dc08 h1:EVpLRHc2B
 gitlab.com/CoiaPrant/gorm-oracle v0.0.0-20251002083709-fd53b886dc08/go.mod h1:KzIHg6ip5Uipws55y8RiD7as6n87SXdp4oMdijHgsuA=
 gitlab.com/CoiaPrant/gorm-sqlite v0.0.0-20240918134430-b2787d19694e h1:UaeLwJNxqV1r4JpB33rRSiJQ/nVOaj+EF/7PSSEgASo=
 gitlab.com/CoiaPrant/gorm-sqlite v0.0.0-20240918134430-b2787d19694e/go.mod h1:adG1U5Wcoy7Bx52LhZMhhLERVCPULpqt/RADhO2oDcE=
-gitlab.com/CoiaPrant/telegram-bot-formatter v0.0.0-20250513082100-acf0beaa111d h1:keV4Ho3XZLzfVKgIklRDjTYXv8ed1EuaSaqFLWQbnD0=
-gitlab.com/CoiaPrant/telegram-bot-formatter v0.0.0-20250513082100-acf0beaa111d/go.mod h1:SqPeldFMez82yosjNxnGE07NrKTQ26ScFkCpvG8cNt0=
 gitlab.com/go-extension/rand v0.0.0-20240303103951-707937a049b5 h1:xQA0rfVPqW3G6dnb4qtgBdxr9XLu9vzDfdqKfLqGFXA=
 gitlab.com/go-extension/rand v0.0.0-20240303103951-707937a049b5/go.mod h1:nRmjyZOSF6N/6yuRl7ui9wKb1DjMX9ELGzOwELwWVSU=
 go.uber.org/mock v0.6.0 h1:hyF9dfmbgIX5EfOdasqLsWD6xqpNZlXblLB/Dbnwv3Y=

@@ -7,4 +7,5 @@ dist/
 
 # CI Cache
 .go/
-.docker/
+.docker/i18n/i18n.go
+i18n/languages/languages.go

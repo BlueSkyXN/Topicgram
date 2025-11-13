@@ -12,7 +12,6 @@ require (
 	gitlab.com/CoiaPrant/clog v0.0.0-20240125121733-757221e3362e
 	gitlab.com/CoiaPrant/gorm-oracle v0.0.0-20251002083709-fd53b886dc08
 	gitlab.com/CoiaPrant/gorm-sqlite v0.0.0-20240918134430-b2787d19694e
-	gitlab.com/CoiaPrant/telegram-bot-formatter v0.0.0-20250513082100-acf0beaa111d
 	gitlab.com/go-extension/rand v0.0.0-20240303103951-707937a049b5
 	golang.org/x/net v0.44.0
 	gorm.io/driver/mysql v1.6.0
